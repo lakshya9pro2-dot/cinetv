@@ -3,8 +3,8 @@
 A high-performance backend API written in Go that resolves standard **TMDB IDs** (for both Movies and TV Shows) into signed, playable streaming URLs across a unified **3-tier fallback architecture**.
 
 This project converts the legacy Python implementation (`app.py`) into idiomatic, concurrent Go with zero third-party dependencies, integrating:
-- **Tier 1: Vidara & Streamtape** (Local in-memory index + live upstream resolution)
-- **Tier 2: VidFast Extractor API** (`/extract?url=...&timeout=20`)
+- **Tier 1: Vidara & Streamtape** (Local in-memory index or remote URL + live upstream resolution)
+- **Tier 2: VidFast Extractor API** (`/extract?url=...`)
 - **Tier 3: CineTV / Filmin** (Cryptographic signing, token generation, AES/3DES decryption, and VOD extraction)
 
 ---
@@ -79,7 +79,7 @@ go build -o vidara-server .
 go run .
 
 # Or specify custom environment variables
-PORT=8080 EXTRACTOR_URL=http://192.168.1.2:8080 ./vidara-server
+PORT=8080 EXTRACTOR_URL=https://video-getter.onrender.com ./vidara-server
 ```
 
 ---
@@ -278,13 +278,14 @@ All settings can be configured via environment variables with safe defaults:
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `8080` | Port for the HTTP server to listen on. |
-| `EXTRACTOR_URL` | `http://192.168.1.2:8080` | Base URL of the Tier 2 VidFast Extractor service. |
+| `EXTRACTOR_URL` | `https://video-getter.onrender.com` | Base URL of the Tier 2 VidFast Extractor service. |
 | `VIDFAST_BASE_URL` | `https://vidfast.vc` | Target URL prefix used for VidFast movie/tv requests. |
 | `VIDARA_BASE_URL` | `https://vidara.to` | Base URL of the Vidara upstream streaming API. |
 | `STREAMTAPE_BASE_URL` | `https://streamtape.com` | Base URL of Streamtape upstream. |
 | `FILMIN_BASE_URL` | `https://filmin.ajfysu.com` | Upstream CineTV / Filmin API base URL. |
 | `TMDB_KEY` | `e6333b32409e02a4a6eba6fb7ff866bb` | TMDB API v3 key for title and ID lookups. |
-| `DATA_FILE` | `data/vidara.json` | Path to the local Vidara JSON dataset. |
+| `DATA_URL` | `https://www.jsonkeeper.com/b/FWSAK` | Remote URL for fetching the Vidara JSON dataset. |
+| `DATA_FILE` | `data/vidara.json` | Path to the local Vidara JSON dataset (fallback). |
 | `REQUEST_TIMEOUT_SECONDS` | `10` | Default timeout duration for external network requests. |
 
 ---
@@ -346,7 +347,7 @@ Handles Tier 2 resolution via external extractor service:
   - Movie: `https://vidfast.vc/movie/{tmdb_id}`
   - TV: `https://vidfast.vc/tv/{tmdb_id}/{season}/{episode}`
 - Encodes query parameters safely using `net/url`:
-  - Request: `GET {EXTRACTOR_URL}/extract?url=<encoded_target>&timeout=20`
+  - Request: `GET {EXTRACTOR_URL}/extract?url=<encoded_target>`
 - Response validation:
   - Checks `success == true` (or `status == "success"`) and `url != ""` $\rightarrow$ returns Tier 2 success.
   - On network error, extractor `success == false`, or timeout $\rightarrow$ returns `nil, nil` to smoothly cascade to Tier 3.
@@ -402,6 +403,6 @@ go test -v ./...
    - Tests JavaScript token evaluation and ID cleanup.
 3. **Tier 2 Extractor Encoding** ([`tiers/tier2_extractor_test.go`](file:///home/linux/Desktop/file/tiers/tier2_extractor_test.go)):
    - Verifies dynamic URL generation for Movie and TV.
-   - Validates that `&timeout=20` and URL encoding are sent on every request.
+   - Validates URL encoding and confirms timeout query parameter is omitted.
 4. **HTTP Endpoints & Validation** ([`handlers/api_test.go`](file:///home/linux/Desktop/file/handlers/api_test.go)):
    - Verifies `/health`, `/api/movie/{id}`, and `/api/tv/{id}/{s}/{e}` across all status codes (`200`, `400`, `404`).

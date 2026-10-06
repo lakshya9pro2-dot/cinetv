@@ -169,27 +169,53 @@ func ParseIDsFromString(s string) (stID, vaID string) {
 	return stID, vaID
 }
 
-// LoadData loads and indexes the Vidara dataset from disk.
-func (v *VidaraTier) LoadData(paths ...string) error {
+// LoadData loads and indexes the Vidara dataset from disk or remote URL.
+func (v *VidaraTier) LoadData(sources ...string) error {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
 	var dataBytes []byte
 	var err error
 
-	for _, p := range paths {
-		if p == "" {
+	for _, s := range sources {
+		if s == "" {
 			continue
 		}
-		dataBytes, err = os.ReadFile(p)
+
+		if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
+			req, reqErr := http.NewRequest("GET", s, nil)
+			if reqErr == nil {
+				req.Header.Set("User-Agent", defaultHeaders["User-Agent"])
+				req.Header.Set("Accept", "application/json")
+				resp, doErr := v.client.Do(req)
+				if doErr == nil {
+					if resp.StatusCode == http.StatusOK {
+						dataBytes, err = io.ReadAll(resp.Body)
+						resp.Body.Close()
+						if err == nil && len(dataBytes) > 0 {
+							log.Printf("[tier1] successfully fetched dataset from URL %s (%d bytes)", s, len(dataBytes))
+							break
+						}
+					} else {
+						resp.Body.Close()
+						log.Printf("[tier1] URL %s returned HTTP status %d", s, resp.StatusCode)
+					}
+				} else {
+					log.Printf("[tier1] network error fetching dataset from %s: %v", s, doErr)
+				}
+			}
+			continue
+		}
+
+		dataBytes, err = os.ReadFile(s)
 		if err == nil && len(dataBytes) > 0 {
-			log.Printf("[tier1] successfully read dataset from %s (%d bytes)", p, len(dataBytes))
+			log.Printf("[tier1] successfully read dataset from %s (%d bytes)", s, len(dataBytes))
 			break
 		}
 	}
 
 	if len(dataBytes) == 0 {
-		return fmt.Errorf("no dataset file found in paths: %v", paths)
+		return fmt.Errorf("no dataset file or URL found in sources: %v", sources)
 	}
 
 	items, parseErr := v.parseDataset(dataBytes)
@@ -244,6 +270,11 @@ func (v *VidaraTier) LoadData(paths ...string) error {
 
 	log.Printf("[tier1] indexed %d movies and %d TV episodes", countMovies, countTVEpisodes)
 	return nil
+}
+
+// LoadFromURL fetches and indexes the Vidara dataset directly from a remote URL.
+func (v *VidaraTier) LoadFromURL(dataURL string) error {
+	return v.LoadData(dataURL)
 }
 
 // parseDataset parses either standard JSON or repairs malformed structures internally.

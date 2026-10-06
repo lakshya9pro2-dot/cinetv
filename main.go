@@ -17,7 +17,7 @@ func main() {
 
 	// 1. Tier 1 - Vidara
 	tier1 := tiers.NewVidaraTier(cfg.VidaraURL, cfg.StreamTapeURL, cfg.RequestTimeout)
-	if err := tier1.LoadData(cfg.DataFilePath, "data/vidara.json", "data.json"); err != nil {
+	if err := tier1.LoadData(cfg.DataURL, cfg.DataFilePath, "data/vidara.json", "data.json"); err != nil {
 		log.Printf("[!] Warning loading Vidara data: %v", err)
 	}
 

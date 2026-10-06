@@ -15,6 +15,7 @@ type Config struct {
 	StreamTapeURL   string
 	FilminURL       string
 	TMDBKey         string
+	DataURL         string
 	DataFilePath    string
 	RequestTimeout  time.Duration
 }
@@ -28,7 +29,7 @@ func LoadConfig() *Config {
 
 	extractorURL := os.Getenv("EXTRACTOR_URL")
 	if extractorURL == "" {
-		extractorURL = "http://192.168.1.2:8080"
+		extractorURL = "https://video-getter.onrender.com"
 	}
 
 	vidfastBaseURL := os.Getenv("VIDFAST_BASE_URL")
@@ -56,6 +57,11 @@ func LoadConfig() *Config {
 		tmdbKey = "e6333b32409e02a4a6eba6fb7ff866bb"
 	}
 
+	dataURL := os.Getenv("DATA_URL")
+	if dataURL == "" {
+		dataURL = "https://www.jsonkeeper.com/b/FWSAK"
+	}
+
 	dataFilePath := os.Getenv("DATA_FILE")
 	if dataFilePath == "" {
 		dataFilePath = "data/vidara.json"
@@ -76,6 +82,7 @@ func LoadConfig() *Config {
 		StreamTapeURL:  streamTapeURL,
 		FilminURL:      filminURL,
 		TMDBKey:        tmdbKey,
+		DataURL:        dataURL,
 		DataFilePath:   dataFilePath,
 		RequestTimeout: time.Duration(timeoutSec) * time.Second,
 	}

@@ -2,6 +2,8 @@ package tiers
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -129,5 +131,27 @@ func TestEvalStreamTapeJS(t *testing.T) {
 	res := EvalStreamTapeJS(context.Background(), expr)
 	if res != "hellorld" {
 		t.Errorf("expected 'hellorld', got '%s'", res)
+	}
+}
+
+func TestVidaraTier_LoadFromURL(t *testing.T) {
+	sampleJSON := `[
+		{"id": 12345, "title": "Test Movie", "type": "movie", "play": {"va": "testva", "st": "testst"}}
+	]`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(sampleJSON))
+	}))
+	defer ts.Close()
+
+	tier := NewVidaraTier("https://vidara.to", "https://streamtape.com", 2*time.Second)
+	err := tier.LoadFromURL(ts.URL)
+	if err != nil {
+		t.Fatalf("LoadFromURL failed: %v", err)
+	}
+
+	movie, found := tier.FindMovie(12345)
+	if !found || movie.Title != "Test Movie" || movie.Play.VA != "testva" {
+		t.Fatalf("expected movie 12345 to be loaded from URL, got: %+v", movie)
 	}
 }

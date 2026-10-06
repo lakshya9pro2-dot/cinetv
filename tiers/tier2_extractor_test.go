@@ -17,9 +17,8 @@ func TestExtractorTier_ResolveMovie_Success(t *testing.T) {
 		if target != "https://vidfast.vc/movie/126560" {
 			t.Errorf("expected url query param 'https://vidfast.vc/movie/126560', got '%s'", target)
 		}
-		timeoutParam := r.URL.Query().Get("timeout")
-		if timeoutParam != "20" {
-			t.Errorf("expected timeout query param '20', got '%s'", timeoutParam)
+		if r.URL.Query().Has("timeout") {
+			t.Errorf("timeout query param should not be present, got '%s'", r.URL.Query().Get("timeout"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"success": true, "url": "https://stream.vidfast.vc/126560.mp4"}`))
@@ -43,9 +42,8 @@ func TestExtractorTier_ResolveTV_Success(t *testing.T) {
 		if target != "https://vidfast.vc/tv/444/3/2" {
 			t.Errorf("expected url query param 'https://vidfast.vc/tv/444/3/2', got '%s'", target)
 		}
-		timeoutParam := r.URL.Query().Get("timeout")
-		if timeoutParam != "20" {
-			t.Errorf("expected timeout query param '20', got '%s'", timeoutParam)
+		if r.URL.Query().Has("timeout") {
+			t.Errorf("timeout query param should not be present, got '%s'", r.URL.Query().Get("timeout"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"success": true, "url": "https://stream.vidfast.vc/tv444s3e2.mp4"}`))

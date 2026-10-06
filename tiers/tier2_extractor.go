@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 type ExtractorTier struct {
 	extractorURL   string
 	vidfastBaseURL string
-	timeoutSeconds int
 	client         *http.Client
 }
 
@@ -40,7 +38,6 @@ func NewExtractorTier(extractorURL, vidfastBaseURL string, timeout time.Duration
 	return &ExtractorTier{
 		extractorURL:   strings.TrimRight(extractorURL, "/"),
 		vidfastBaseURL: strings.TrimRight(vidfastBaseURL, "/"),
-		timeoutSeconds: 20,
 		client:         &http.Client{Timeout: clientTimeout},
 	}
 }
@@ -127,11 +124,6 @@ func (t *ExtractorTier) callExtractor(ctx context.Context, targetURL string) (st
 
 	params := url.Values{}
 	params.Set("url", targetURL)
-	timeoutSec := t.timeoutSeconds
-	if timeoutSec <= 0 {
-		timeoutSec = 20
-	}
-	params.Set("timeout", strconv.Itoa(timeoutSec))
 	parsedExtractor.RawQuery = params.Encode()
 	fullURL := parsedExtractor.String()
 
