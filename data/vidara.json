@@ -1,0 +1,72 @@
+[
+  {
+    "id": 262838,
+    "title": "India's Got Latent",
+    "type": "tv",
+    "quality": "HD",
+    "season": 1,
+    "episodes": [
+      {
+        "episode": 1,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      },
+      {
+        "episode": 2,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      },
+      {
+        "episode": 3,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      }
+    ]
+  },
+  {
+    "id": 262838,
+    "title": "India's Got Latent",
+    "type": "tv",
+    "quality": "HD",
+    "season": 2,
+    "episodes": [
+      {
+        "episode": 1,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      },
+      {
+        "episode": 2,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      },
+      {
+        "episode": 3,
+        "play": {
+          "va": "6a4482e9ae150",
+          "st": "6a44824dcd175"
+        }
+      }
+    ]
+  },
+  {
+    "id": 1167307,
+    "title": "Obsession",
+    "type": "movie",
+    "quality": "HD",
+    "play": {
+      "va": "mzfdFOguU87x",
+      "st": "6a44824dcd175"
+    }
+  }
+]
