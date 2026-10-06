@@ -26,7 +26,7 @@ type ExtractorTier struct {
 // NewExtractorTier creates a new Tier 2 extractor resolver.
 func NewExtractorTier(extractorURL, vidfastBaseURL string, timeout time.Duration) *ExtractorTier {
 	if extractorURL == "" {
-		extractorURL = "http://192.168.1.2:8080"
+		extractorURL = "https://video-getter.onrender.com"
 	}
 	if vidfastBaseURL == "" {
 		vidfastBaseURL = "https://vidfast.vc"
