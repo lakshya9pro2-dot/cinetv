@@ -164,7 +164,9 @@ func (c *CineTVTier) signVideoURL(videoURL string) string {
 	if strings.Contains(videoURL, "?") {
 		sep = "&"
 	}
-	return fmt.Sprintf("%s%swsSecret=%s&wsTime=%s", videoURL, sep, wsSecret, wsTime)
+	signed := fmt.Sprintf("%s%swsSecret=%s&wsTime=%s", videoURL, sep, wsSecret, wsTime)
+	log.Printf("[tier3] generated signed stream URL: %s", signed)
+	return signed
 }
 
 func (c *CineTVTier) aesDecrypt(encryptedBase64 string) string {
@@ -268,10 +270,12 @@ func (c *CineTVTier) fetchToken(ctx context.Context) string {
 		return c.cachedToken
 	}
 
+	log.Printf("[tier3] token cache empty, requesting session token from /api/public/init")
 	curTime := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	headers := c.buildHeaders(curTime, "")
 	buf := c.httpsPost(ctx, "/api/public/init", map[string]string{"invited_by": "", "is_install": "1"}, headers)
 	if len(buf) == 0 {
+		log.Printf("[tier3] /api/public/init returned empty body")
 		return ""
 	}
 
@@ -287,19 +291,23 @@ func (c *CineTVTier) fetchToken(ctx context.Context) string {
 			if userInfo, ok := result["user_info"].(map[string]interface{}); ok {
 				if t, ok := userInfo["token"].(string); ok && t != "" {
 					c.cachedToken = t
+					log.Printf("[tier3] acquired new session token: %s...", t[:min(8, len(t))])
 					return c.cachedToken
 				}
 			}
 		}
 	}
+	log.Printf("[tier3] failed parsing session token from /api/public/init")
 	return ""
 }
 
 func (c *CineTVTier) apiPost(ctx context.Context, endpoint string, formData map[string]string) map[string]interface{} {
 	token := c.fetchToken(ctx)
 	curTime := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	log.Printf("[tier3] POST %s with formData=%v", endpoint, formData)
 	buf := c.httpsPost(ctx, endpoint, formData, c.buildHeaders(curTime, token))
 	if len(buf) == 0 {
+		log.Printf("[tier3] POST %s returned empty response", endpoint)
 		return nil
 	}
 
@@ -310,6 +318,7 @@ func (c *CineTVTier) apiPost(ctx context.Context, endpoint string, formData map[
 }
 
 func (c *CineTVTier) getVodInfo(ctx context.Context, vodID string, audioType int) map[string]interface{} {
+	log.Printf("[tier3] fetching VOD info for vod_id=%s, audio_type=%d", vodID, audioType)
 	token := c.fetchToken(ctx)
 	curTime := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	buf := c.httpsPost(
@@ -324,12 +333,14 @@ func (c *CineTVTier) getVodInfo(ctx context.Context, vodID string, audioType int
 		c.buildHeaders(curTime, token),
 	)
 	if len(buf) == 0 {
+		log.Printf("[tier3] /api/vod/info_new returned empty body for vod_id=%s", vodID)
 		return nil
 	}
 
 	dec := c.aesDecrypt(strings.TrimSpace(string(buf)))
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(dec), &result); err != nil {
+		log.Printf("[tier3] failed parsing decrypted VOD info for vod_id=%s: %v", vodID, err)
 		return nil
 	}
 
@@ -352,20 +363,24 @@ func (c *CineTVTier) getVodInfo(ctx context.Context, vodID string, audioType int
 
 func (c *CineTVTier) fetchTmdbDetails(ctx context.Context, id, mediaType string) *TmdbDetails {
 	reqURL := fmt.Sprintf("https://api.themoviedb.org/3/%s/%s?api_key=%s", mediaType, id, c.tmdbKey)
+	log.Printf("[tier3] fetching TMDB %s metadata for ID %s", mediaType, id)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
+		log.Printf("[tier3] error creating TMDB request: %v", err)
 		return nil
 	}
 	req.Header.Set("User-Agent", cinetvUserAgent)
 
 	resp, err := c.client.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
+		log.Printf("[tier3] TMDB request failed for ID %s: err=%v", id, err)
 		return nil
 	}
 	defer resp.Body.Close()
 
 	var data map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Printf("[tier3] TMDB response decode error for ID %s: %v", id, err)
 		return nil
 	}
 
@@ -390,6 +405,7 @@ func (c *CineTVTier) fetchTmdbDetails(ctx context.Context, id, mediaType string)
 		yearVal = strings.Split(dateVal, "-")[0]
 	}
 
+	log.Printf("[tier3] TMDB %s details resolved for ID %s: title='%s', year='%s'", mediaType, id, titleVal, yearVal)
 	return &TmdbDetails{
 		ID:    int(idFloat),
 		Title: titleVal,

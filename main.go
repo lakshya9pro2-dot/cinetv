@@ -14,6 +14,9 @@ func main() {
 	cfg := LoadConfig()
 
 	log.Printf("[*] Initializing 3-Tier Multi-Source Streaming API...")
+	log.Printf("[*] Config: PORT=%s, EXTRACTOR_URL=%s, DATA_URL=%s", cfg.Port, cfg.ExtractorURL, cfg.DataURL)
+	log.Printf("[*] Config: VIDFAST_BASE_URL=%s, VIDARA_BASE_URL=%s, STREAMTAPE_BASE_URL=%s", cfg.VidFastBaseURL, cfg.VidaraURL, cfg.StreamTapeURL)
+	log.Printf("[*] Config: FILMIN_BASE_URL=%s, REQUEST_TIMEOUT=%s", cfg.FilminURL, cfg.RequestTimeout)
 
 	// 1. Tier 1 - Vidara
 	tier1 := tiers.NewVidaraTier(cfg.VidaraURL, cfg.StreamTapeURL, cfg.RequestTimeout)
@@ -60,7 +63,8 @@ func main() {
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
 	log.Printf("[*] Server listening on http://%s", addr)
-	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
+	loggedMux := handlers.LoggingMiddleware(mux)
+	if err := http.ListenAndServe(":"+cfg.Port, loggedMux); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }

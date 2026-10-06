@@ -538,24 +538,29 @@ func (v *VidaraTier) ExtractVidara(ctx context.Context, urlOrID string) (*models
 		req.Header.Set(k, val)
 	}
 
+	log.Printf("[tier1] querying Vidara API: %s with filecode=%s", apiURL, fileCode)
 	resp, err := v.client.Do(req)
 	if err != nil {
+		log.Printf("[tier1] Vidara API request error for %s: %v", fileCode, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[tier1] Vidara API returned non-200 status %d for filecode=%s", resp.StatusCode, fileCode)
 		return nil, fmt.Errorf("vidara api returned status %d", resp.StatusCode)
 	}
 
 	var data map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Printf("[tier1] Vidara API error decoding JSON for %s: %v", fileCode, err)
 		return nil, err
 	}
 
 	streamingURL, _ := data["streaming_url"].(string)
 	title, _ := data["title"].(string)
 	subtitles := data["subtitles"]
+	log.Printf("[tier1] Vidara API resolved filecode=%s: title='%s', streaming_url=%s", fileCode, title, streamingURL)
 
 	var thumbnail *string
 	if th, ok := data["thumbnail"].(string); ok && th != "" {
@@ -607,13 +612,16 @@ func (v *VidaraTier) ExtractStreamTape(ctx context.Context, urlOrID string) (*mo
 		req.Header.Set(k, val)
 	}
 
+	log.Printf("[tier1] querying Streamtape page: %s", targetURL)
 	resp, err := v.client.Do(req)
 	if err != nil {
+		log.Printf("[tier1] Streamtape HTTP request error: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[tier1] Streamtape returned status %d for %s", resp.StatusCode, targetURL)
 		return nil, fmt.Errorf("streamtape returned status %d", resp.StatusCode)
 	}
 
@@ -637,11 +645,13 @@ func (v *VidaraTier) ExtractStreamTape(ctx context.Context, urlOrID string) (*mo
 	}
 
 	if matchExpr == "" {
+		log.Printf("[tier1] Streamtape token not found in HTML for %s", targetURL)
 		return nil, fmt.Errorf("could not find media stream token in HTML")
 	}
 
 	evalResult := EvalStreamTapeJS(ctx, matchExpr)
 	if evalResult == "" {
+		log.Printf("[tier1] failed evaluating Streamtape JS token expression: %s", matchExpr)
 		return nil, fmt.Errorf("failed to evaluate media script token")
 	}
 
@@ -660,6 +670,8 @@ func (v *VidaraTier) ExtractStreamTape(ctx context.Context, urlOrID string) (*mo
 	if finalURL == "" {
 		finalURL = streamURL
 	}
+
+	log.Printf("[tier1] Streamtape resolved stream for %s: title='%s', cdn_url=%s", clean, title, finalURL)
 
 	proxyURL := fmt.Sprintf("/api/proxy/stream?url=%s", url.QueryEscape(finalURL))
 
@@ -843,6 +855,7 @@ func (v *VidaraTier) ExtractAudioTracksFromM3U(ctx context.Context, m3uURL strin
 		})
 	}
 
+	log.Printf("[tier1] parsed %d audio tracks from M3U playlist %s", len(tracks), m3uURL)
 	return tracks
 }
 
@@ -887,6 +900,7 @@ func (v *VidaraTier) ResolveDual(ctx context.Context, stInput, vaInput string) *
 		vaInput = "d932127894f1"
 	}
 
+	log.Printf("[tier1] starting parallel dual resolution for st=%s, va=%s", stInput, vaInput)
 	var stRes, vaRes *models.ExtractorResponse
 	var wg sync.WaitGroup
 
@@ -937,6 +951,8 @@ func (v *VidaraTier) ResolveDual(ctx context.Context, stInput, vaInput string) *
 	} else if vaOk {
 		mode = "secondary_only"
 	}
+
+	log.Printf("[tier1] dual resolution finished: mode=%s (st_ok=%t, va_ok=%t)", mode, stOk, vaOk)
 
 	var thumb *string
 	if vaRes != nil && vaRes.Thumbnail != nil {

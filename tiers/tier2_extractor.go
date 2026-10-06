@@ -127,8 +127,12 @@ func (t *ExtractorTier) callExtractor(ctx context.Context, targetURL string) (st
 	parsedExtractor.RawQuery = params.Encode()
 	fullURL := parsedExtractor.String()
 
+	start := time.Now()
+	log.Printf("[tier2] querying extractor API: %s (target: %s)", fullURL, targetURL)
+
 	req, err := http.NewRequestWithContext(ctx, "GET", fullURL, nil)
 	if err != nil {
+		log.Printf("[tier2] failed creating request: %v", err)
 		return "", fmt.Errorf("failed to create extractor request: %w", err)
 	}
 	req.Header.Set("User-Agent", defaultHeaders["User-Agent"])
@@ -136,21 +140,25 @@ func (t *ExtractorTier) callExtractor(ctx context.Context, targetURL string) (st
 
 	resp, err := t.client.Do(req)
 	if err != nil {
+		log.Printf("[tier2] extractor network error after %s: %v", time.Since(start), err)
 		return "", fmt.Errorf("network error calling extractor: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[tier2] extractor returned status %d after %s", resp.StatusCode, time.Since(start))
 		return "", fmt.Errorf("extractor http status %d", resp.StatusCode)
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Printf("[tier2] error reading extractor body: %v", err)
 		return "", fmt.Errorf("failed reading extractor response: %w", err)
 	}
 
 	var apiResp extractorAPIResponse
 	if err := json.Unmarshal(bodyBytes, &apiResp); err != nil {
+		log.Printf("[tier2] error parsing extractor JSON response: %v", err)
 		return "", fmt.Errorf("failed parsing extractor json response: %w", err)
 	}
 
@@ -169,12 +177,16 @@ func (t *ExtractorTier) callExtractor(ctx context.Context, targetURL string) (st
 		if errMsg == "" {
 			errMsg = "extractor returned success=false"
 		}
+		log.Printf("[tier2] extractor returned failure: %s (in %s)", errMsg, time.Since(start))
 		return "", fmt.Errorf("%s", errMsg)
 	}
 
 	if apiResp.URL == nil || strings.TrimSpace(*apiResp.URL) == "" {
+		log.Printf("[tier2] extractor returned empty url (in %s)", time.Since(start))
 		return "", fmt.Errorf("extractor returned null or empty url")
 	}
 
-	return strings.TrimSpace(*apiResp.URL), nil
+	resolvedURL := strings.TrimSpace(*apiResp.URL)
+	log.Printf("[tier2] extractor successfully extracted stream URL in %s: %s", time.Since(start), resolvedURL)
+	return resolvedURL, nil
 }
